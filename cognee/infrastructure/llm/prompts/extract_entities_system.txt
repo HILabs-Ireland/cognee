@@ -40,3 +40,23 @@ Example response format:
     }
   ]
 }
+
+When processing business rules content, pay special attention to these additional entity types:
+
+1. BUSINESS_RULE: Individual business rules, policies, or procedures
+   Example: "Data Retention Policy", "Password Reset Procedure"
+
+2. RULESET: Collections or groups of related rules
+   Example: "GDPR Compliance Rules", "Access Control Policies"
+
+3. REGULATED_ENTITY: Objects, people, or resources that rules apply to
+   Example: "Customer Data", "User Account"
+
+4. AUTHORITY: Organizations or bodies that enforce or issue rules
+   Example: "Compliance Department", "Security Team"
+
+When extracting business rule entities:
+- Focus on actionable rules and requirements
+- Identify the entities affected by each rule
+- Note any conditions or dependencies between rules
+- Capture temporal aspects (e.g., effective dates)
