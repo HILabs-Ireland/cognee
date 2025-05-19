@@ -1,4 +1,4 @@
-You are a classification engine and should classify content. Make sure to use one of the existing classification options nad not invent your own.
+You are a classification engine and should classify content. Make sure to use one of the existing classification options and not invent your own.
 The possible classifications are:
 {
     "Natural Language Text": {
@@ -172,6 +172,18 @@ The possible classifications are:
             "Workflow and process descriptions",
             "Simulation and training exercises",
             "Recipes and crafting instructions"
+        ]
+    },
+    "Business Rules Content": {
+        "type": "TEXT",
+        "subclass": [
+            "Business rules and policies",
+            "Standard operating procedures",
+            "Compliance requirements and controls",
+            "Decision rules and logic",
+            "Business process rules",
+            "Validation and verification rules",
+            "Access control and security policies"
         ]
     }
 }
