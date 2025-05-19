@@ -15,7 +15,7 @@ class LLMConfig(BaseSettings):
     llm_streaming: bool = False
     llm_max_tokens: int = 16384
     transcription_model: str = "whisper-1"
-    graph_prompt_path: str = "generate_rules_graph_prompt.txt"
+    graph_prompt_path: str = "generate_graph_prompt.txt"
     llm_rate_limit_enabled: bool = False
     llm_rate_limit_requests: int = 60
     llm_rate_limit_interval: int = 60  # in seconds (default is 60 requests per minute)
