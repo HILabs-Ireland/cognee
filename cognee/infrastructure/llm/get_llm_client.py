@@ -14,6 +14,7 @@ class LLMProvider(Enum):
     ANTHROPIC = "anthropic"
     CUSTOM = "custom"
     GEMINI = "gemini"
+    BEDROCK = "bedrock"
 
 
 def get_llm_client():
@@ -45,6 +46,14 @@ def get_llm_client():
             transcription_model=llm_config.transcription_model,
             max_tokens=max_tokens,
             streaming=llm_config.llm_streaming,
+        )
+
+    elif provider == LLMProvider.BEDROCK:
+        from .bedrock.adapter import BedrockAdapter
+        
+        return BedrockAdapter(
+            model=llm_config.llm_model,
+            max_tokens=max_tokens
         )
 
     elif provider == LLMProvider.OLLAMA:

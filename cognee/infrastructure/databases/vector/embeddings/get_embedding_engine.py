@@ -11,7 +11,7 @@ def get_embedding_engine() -> EmbeddingEngine:
     return create_embedding_engine(
         config.embedding_provider,
         config.embedding_model,
-        config.embedding_dimensions,
+        1024,
         config.embedding_max_tokens,
         config.embedding_endpoint,
         config.embedding_api_key,
@@ -33,6 +33,15 @@ def create_embedding_engine(
     huggingface_tokenizer,
     llm_api_key,
 ):
+    if embedding_provider == "bedrock":
+        from .BedrockEmbeddingEngine import BedrockEmbeddingEngine
+        
+        return BedrockEmbeddingEngine(
+            model=embedding_model,
+            dimensions=embedding_dimensions,
+            max_tokens=embedding_max_tokens
+        )
+
     if embedding_provider == "fastembed":
         from .FastembedEmbeddingEngine import FastembedEmbeddingEngine
 
