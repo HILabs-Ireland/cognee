@@ -6,6 +6,7 @@ The aim is to achieve simplicity and clarity in the knowledge graph.
 # 1. Labeling Nodes
 **Consistency**: Ensure you use basic or elementary types for node labels.
   - For example, when you identify an entity representing a person, always label it as **"Person"**.
+  - **CRITICAL REQUIREMENT**: You MUST create a **"Rule"** node for EVERY business rule identified in the text. This is a non-negotiable requirement. Each distinct rule MUST have its own node with a clear, descriptive ID. Failure to identify and create Rule nodes will result in an incomplete graph.
   - Avoid using more specific terms like "Mathematician" or "Scientist", keep those as "profession" property.
   - Don't use too generic terms like "Entity".
 **Node IDs**: Never utilize integers as node IDs.
