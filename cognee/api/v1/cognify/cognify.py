@@ -1,4 +1,5 @@
 import asyncio
+import os
 from cognee.shared.logging_utils import get_logger
 from typing import Union, Optional
 from pydantic import BaseModel
@@ -31,7 +32,8 @@ async def cognify(
     graph_model: BaseModel = KnowledgeGraph,
     chunker=TextChunker,
     chunk_size: int = None,
-    ontology_file_path: Optional[str] = None,
+    ontology_file_path: Optional[str] = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),"zendesk-ontology.owl"),
 ):
     tasks = await get_default_tasks(user, graph_model, chunker, chunk_size, ontology_file_path)
 
