@@ -32,9 +32,11 @@ async def cognify(
     graph_model: BaseModel = KnowledgeGraph,
     chunker=TextChunker,
     chunk_size: int = None,
-    ontology_file_path: Optional[str] = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),"zendesk-ontology.owl"),
+    ontology_file_path: Optional[str] = None,
 ):
+    
+    # ontology_file = ontology_file_path or os.path.join(os.path.dirname(os.path.abspath(__file__)),"zendesk-ontology.owl") 
+
     tasks = await get_default_tasks(user, graph_model, chunker, chunk_size, ontology_file_path)
 
     return await cognee_pipeline(

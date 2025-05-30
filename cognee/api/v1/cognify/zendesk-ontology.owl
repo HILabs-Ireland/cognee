@@ -1,138 +1,162 @@
-<?xml version="1.0"?>
-<rdf:RDF xmlns="http://www.alternaleaf.org/ontology#"
-    xml:base="http://www.alternaleaf.org/ontology"
-    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-    xmlns:xsd="http://www.w3.org/2001/XMLSchema#">
-
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF
+  xmlns:al="http://www.alternaleaf.org/ontology#"
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+  xmlns:owl="http://www.w3.org/2002/07/owl#"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+>
   <!-- Classes -->
-  <rdfs:Class rdf:about="#PatientPortal"/>
-  <rdfs:Class rdf:about="#Patient"/>
-  <rdfs:Class rdf:about="#Prescription"/>
-  <rdfs:Class rdf:about="#Medication"/>
-  <rdfs:Class rdf:about="#Appointment"/>
-  <rdfs:Class rdf:about="#Email"/>
-  <rdfs:Class rdf:about="#AccountActivation"/>
-  <rdfs:Class rdf:about="#Login"/>
-  <rdfs:Class rdf:about="#PasswordReset"/>
-  <rdfs:Class rdf:about="#UserProfile"/>
-  <rdfs:Class rdf:about="#Link"/>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#PatientPortal">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#Patient">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#Prescription">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#Medication">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#Appointment">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#Email">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#AccountActivation">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#Login">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#PasswordReset">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#UserProfile">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#Link">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
 
   <!-- Properties -->
-  <rdf:Property rdf:about="#hasPrescription">
-    <rdfs:domain rdf:resource="#Patient"/>
-    <rdfs:range rdf:resource="#Prescription"/>
-  </rdf:Property>
-
-  <rdf:Property rdf:about="#hasMedication">
-    <rdfs:domain rdf:resource="#Prescription"/>
-    <rdfs:range rdf:resource="#Medication"/>
-  </rdf:Property>
-
-  <rdf:Property rdf:about="#booksAppointment">
-    <rdfs:domain rdf:resource="#Patient"/>
-    <rdfs:range rdf:resource="#Appointment"/>
-  </rdf:Property>
-
-  <rdf:Property rdf:about="#receivesEmail">
-    <rdfs:domain rdf:resource="#Patient"/>
-    <rdfs:range rdf:resource="#Email"/>
-  </rdf:Property>
-
-  <rdf:Property rdf:about="#emailHasSubject">
-    <rdfs:domain rdf:resource="#Email"/>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#hasPrescription">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://www.alternaleaf.org/ontology#Patient"/>
+    <rdfs:range rdf:resource="http://www.alternaleaf.org/ontology#Prescription"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#hasMedication">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://www.alternaleaf.org/ontology#Prescription"/>
+    <rdfs:range rdf:resource="http://www.alternaleaf.org/ontology#Medication"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#booksAppointment">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://www.alternaleaf.org/ontology#Patient"/>
+    <rdfs:range rdf:resource="http://www.alternaleaf.org/ontology#Appointment"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#receivesEmail">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://www.alternaleaf.org/ontology#Patient"/>
+    <rdfs:range rdf:resource="http://www.alternaleaf.org/ontology#Email"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#emailHasSubject">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="http://www.alternaleaf.org/ontology#Email"/>
     <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
-  </rdf:Property>
-
-  <rdf:Property rdf:about="#emailContainsLink">
-    <rdfs:domain rdf:resource="#Email"/>
-    <rdfs:range rdf:resource="#Link"/>
-  </rdf:Property>
-
-  <rdf:Property rdf:about="#activatesAccountVia">
-    <rdfs:domain rdf:resource="#Patient"/>
-    <rdfs:range rdf:resource="#AccountActivation"/>
-  </rdf:Property>
-
-  <rdf:Property rdf:about="#hasLogin">
-    <rdfs:domain rdf:resource="#Patient"/>
-    <rdfs:range rdf:resource="#Login"/>
-  </rdf:Property>
-
-  <rdf:Property rdf:about="#canResetPasswordVia">
-    <rdfs:domain rdf:resource="#Patient"/>
-    <rdfs:range rdf:resource="#PasswordReset"/>
-  </rdf:Property>
-
-  <rdf:Property rdf:about="#loginUsesEmail">
-    <rdfs:domain rdf:resource="#Login"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#emailContainsLink">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://www.alternaleaf.org/ontology#Email"/>
+    <rdfs:range rdf:resource="http://www.alternaleaf.org/ontology#Link"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#activatesAccountVia">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://www.alternaleaf.org/ontology#Patient"/>
+    <rdfs:range rdf:resource="http://www.alternaleaf.org/ontology#AccountActivation"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#hasLogin">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://www.alternaleaf.org/ontology#Patient"/>
+    <rdfs:range rdf:resource="http://www.alternaleaf.org/ontology#Login"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#canResetPasswordVia">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://www.alternaleaf.org/ontology#Patient"/>
+    <rdfs:range rdf:resource="http://www.alternaleaf.org/ontology#PasswordReset"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#loginUsesEmail">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:domain rdf:resource="http://www.alternaleaf.org/ontology#Login"/>
     <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
-  </rdf:Property>
-
-  <rdf:Property rdf:about="#loginLinksToPortal">
-    <rdfs:domain rdf:resource="#Login"/>
-    <rdfs:range rdf:resource="#PatientPortal"/>
-  </rdf:Property>
-
-  <rdf:Property rdf:about="#refersTo">
-    <rdfs:domain rdf:resource="#PatientPortal"/>
-    <rdfs:range rdf:resource="#PatientPortal"/>
-  </rdf:Property>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#loginLinksToPortal">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://www.alternaleaf.org/ontology#Login"/>
+    <rdfs:range rdf:resource="http://www.alternaleaf.org/ontology#PatientPortal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#refersTo">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://www.alternaleaf.org/ontology#PatientPortal"/>
+    <rdfs:range rdf:resource="http://www.alternaleaf.org/ontology#PatientPortal"/>
+  </rdf:Description>
 
   <!-- Individuals -->
-  <rdf:Description rdf:about="#AlternaleafPatientPortal">
-    <rdf:type rdf:resource="#PatientPortal"/>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#AlternaleafPatientPortal">
+    <rdf:type rdf:resource="http://www.alternaleaf.org/ontology#PatientPortal"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
   </rdf:Description>
-
-  <rdf:Description rdf:about="#ActivateAccountEmail">
-    <rdf:type rdf:resource="#Email"/>
-    <emailHasSubject>Action required: Activate your account</emailHasSubject>
-    <emailContainsLink rdf:resource="#CreatePasswordLink"/>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#ActivateAccountEmail">
+    <rdf:type rdf:resource="http://www.alternaleaf.org/ontology#Email"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <al:emailHasSubject>Action required: Activate your account</al:emailHasSubject>
+    <al:emailContainsLink rdf:resource="http://www.alternaleaf.org/ontology#CreatePasswordLink"/>
   </rdf:Description>
-
-  <rdf:Description rdf:about="#CreatePasswordLink">
-    <rdf:type rdf:resource="#Link"/>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#CreatePasswordLink">
+    <rdf:type rdf:resource="http://www.alternaleaf.org/ontology#Link"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
   </rdf:Description>
-
-  <rdf:Description rdf:about="#PatientUserLogin">
-    <rdf:type rdf:resource="#Login"/>
-    <loginUsesEmail>patient@example.com</loginUsesEmail>
-    <loginLinksToPortal rdf:resource="#AlternaleafPatientPortal"/>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#PatientUserLogin">
+    <rdf:type rdf:resource="http://www.alternaleaf.org/ontology#Login"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <al:loginUsesEmail>patient@example.com</al:loginUsesEmail>
+    <al:loginLinksToPortal rdf:resource="http://www.alternaleaf.org/ontology#AlternaleafPatientPortal"/>
   </rdf:Description>
-
-  <rdf:Description rdf:about="#PasswordResetLink">
-    <rdf:type rdf:resource="#PasswordReset"/>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#PasswordResetLink">
+    <rdf:type rdf:resource="http://www.alternaleaf.org/ontology#PasswordReset"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
   </rdf:Description>
-
-  <rdf:Description rdf:about="#CircuitPortal">
-    <rdf:type rdf:resource="#PatientPortal"/>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#CircuitPortal">
+    <rdf:type rdf:resource="http://www.alternaleaf.org/ontology#PatientPortal"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
   </rdf:Description>
-
-  <rdf:Description rdf:about="#ExamplePatient">
-    <rdf:type rdf:resource="#Patient"/>
-    <hasPrescription rdf:resource="#ExamplePrescription"/>
-    <booksAppointment rdf:resource="#ExampleAppointment"/>
-    <receivesEmail rdf:resource="#ActivateAccountEmail"/>
-    <activatesAccountVia rdf:resource="#AccountActivationProcess"/>
-    <hasLogin rdf:resource="#PatientUserLogin"/>
-    <canResetPasswordVia rdf:resource="#PasswordResetLink"/>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#ExamplePatient">
+    <rdf:type rdf:resource="http://www.alternaleaf.org/ontology#Patient"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <al:hasPrescription rdf:resource="http://www.alternaleaf.org/ontology#ExamplePrescription"/>
+    <al:booksAppointment rdf:resource="http://www.alternaleaf.org/ontology#ExampleAppointment"/>
+    <al:receivesEmail rdf:resource="http://www.alternaleaf.org/ontology#ActivateAccountEmail"/>
+    <al:activatesAccountVia rdf:resource="http://www.alternaleaf.org/ontology#AccountActivationProcess"/>
+    <al:hasLogin rdf:resource="http://www.alternaleaf.org/ontology#PatientUserLogin"/>
+    <al:canResetPasswordVia rdf:resource="http://www.alternaleaf.org/ontology#PasswordResetLink"/>
   </rdf:Description>
-
-  <rdf:Description rdf:about="#ExamplePrescription">
-    <rdf:type rdf:resource="#Prescription"/>
-    <hasMedication rdf:resource="#ExampleMedication"/>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#ExamplePrescription">
+    <rdf:type rdf:resource="http://www.alternaleaf.org/ontology#Prescription"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <al:hasMedication rdf:resource="http://www.alternaleaf.org/ontology#ExampleMedication"/>
   </rdf:Description>
-
-  <rdf:Description rdf:about="#ExampleMedication">
-    <rdf:type rdf:resource="#Medication"/>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#ExampleMedication">
+    <rdf:type rdf:resource="http://www.alternaleaf.org/ontology#Medication"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
   </rdf:Description>
-
-  <rdf:Description rdf:about="#ExampleAppointment">
-    <rdf:type rdf:resource="#Appointment"/>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#ExampleAppointment">
+    <rdf:type rdf:resource="http://www.alternaleaf.org/ontology#Appointment"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
   </rdf:Description>
-
-  <rdf:Description rdf:about="#AccountActivationProcess">
-    <rdf:type rdf:resource="#AccountActivation"/>
+  <rdf:Description rdf:about="http://www.alternaleaf.org/ontology#AccountActivationProcess">
+    <rdf:type rdf:resource="http://www.alternaleaf.org/ontology#AccountActivation"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
   </rdf:Description>
-
 </rdf:RDF>
