@@ -14,6 +14,7 @@ services:
       - HOST=0.0.0.0
       - ENVIRONMENT=staging
       - PYTHONPATH=.
+      - LOG_LEVEL=ERROR
     extra_hosts:
       # Allows the container to reach your local machine using "host.docker.internal" instead of "localhost"
       - 'host.docker.internal:host-gateway'
