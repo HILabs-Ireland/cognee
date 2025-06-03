@@ -62,5 +62,7 @@ RUN chmod +x /app/entrypoint.sh
 ENV PATH="/app/.venv/bin:$PATH"
 
 ENV PYTHONPATH=/app
+# ENV LOG_LEVEL=ERROR
+ENV PYTHONUNBUFFERED=1
 
 ENTRYPOINT ["/app/entrypoint.sh"]

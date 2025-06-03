@@ -16,8 +16,7 @@ def get_delete_router() -> APIRouter:
 
     @router.delete("/", response_model=None)
     async def delete(
-        file: UploadFile = UploadFile(None),
-        url: str = Form(None),
+        data: List[UploadFile],
         dataset_name: str = Form("main_dataset"),
         mode: str = Form("soft"),
         user: User = Depends(get_authenticated_user),
@@ -25,8 +24,7 @@ def get_delete_router() -> APIRouter:
         """This endpoint is responsible for deleting data from the graph.
 
         Args:
-            file: a single file upload
-            url: a URL to fetch data from (supports GitHub clone or direct file download)
+            data: The data to delete (files, URLs, or text)
             dataset_name: Name of the dataset to delete from (default: "main_dataset")
             mode: "soft" (default) or "hard" - hard mode also deletes degree-one entity nodes
             user: Authenticated user
@@ -34,54 +32,44 @@ def get_delete_router() -> APIRouter:
         from cognee.api.v1.delete import delete as cognee_delete
 
         try:
-            logger.info(f"Processing delete request for dataset={dataset_name}")
-            if file and file.filename:
-                logger.info(f"Received file upload: filename={file.filename}, content_type={file.content_type}")
-                try:
-                    text = (await file.read()).decode("utf-8")
-                    logger.info(f"Passing uploaded file as text to cognee_delete")
-                    return await cognee_delete(
-                        text,
-                        dataset_name=dataset_name,
-                        mode=mode
-                    )
-                except Exception as e:
-                    logger.info(f"Could not decode file as text, falling back to binary. Error: {e}")
-                    file.file.seek(0)
-                    return await cognee_delete(
-                        file.file,
-                        dataset_name=dataset_name,
-                        mode=mode
-                    )
-            elif url:
-                logger.info(f"Received url={url}")
-                if url.startswith("http"):
-                    if "github" in url:
-                        repo_name = url.split("/")[-1].replace(".git", "")
-                        subprocess.run(["git", "clone", url, f".data/{repo_name}"], check=True)
-                        logger.info(f"Cloned GitHub repo to .data/{repo_name}")
-                        return await cognee_delete(
-                            "data://.data/",
-                            dataset_name=dataset_name,
-                            mode=mode
+            # Handle each file in the list
+            results = []
+            for file in data:
+                if file.filename.startswith("http"):
+                    if "github" in file.filename:
+                        # For GitHub repos, we need to get the content hash of each file
+                        repo_name = file.filename.split("/")[-1].replace(".git", "")
+                        subprocess.run(
+                            ["git", "clone", file.filename, f".data/{repo_name}"], check=True
+                        )
+                        # Note: This would need to be implemented to get content hashes of all files
+                        # For now, we'll just return an error
+                        return JSONResponse(
+                            status_code=400,
+                            content={"error": "Deleting GitHub repositories is not yet supported"},
                         )
                     else:
-                        response = requests.get(url)
+                        # Fetch and delete the data from other types of URL
+                        response = requests.get(file.filename)
                         response.raise_for_status()
-                        if not response.content:
-                            logger.error(f"No content fetched from URL: {url}")
-                            return JSONResponse(status_code=400, content={"error": "No content fetched from URL"})
-                        logger.info(f"Fetched content from URL: {response.text}")
-                        return await cognee_delete(
-                            response.text,
-                            dataset_name=dataset_name,
-                            mode=mode
+                        file_data = response.content
+                        result = await cognee_delete(
+                            file_data, dataset_name=dataset_name, mode=mode
                         )
+                        results.append(result)
                 else:
-                    logger.error(f"Invalid URL format: {url}")
-                    return JSONResponse(status_code=400, content={"error": "Invalid URL format"})
+                    # Handle uploaded file by accessing its file attribute
+                    result = await cognee_delete(file.file, dataset_name=dataset_name, mode=mode)
+                    results.append(result)
+
+            if len(results) == 1:
+                return results[0]
             else:
-                return JSONResponse(status_code=400, content={"error": "No file or URL provided"})
+                return {
+                    "status": "success",
+                    "message": "Multiple documents deleted",
+                    "results": results,
+                }
         except Exception as error:
             logger.error(f"Error during deletion: {str(error)}")
             return JSONResponse(status_code=409, content={"error": str(error)})
