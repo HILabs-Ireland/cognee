@@ -1,6 +1,6 @@
 from uuid import UUID
 from datetime import datetime
-from typing import Union
+from typing import Union, Optional
 from fastapi import Depends, APIRouter
 from fastapi.responses import JSONResponse
 from cognee.modules.search.types import SearchType
@@ -8,12 +8,18 @@ from cognee.api.DTO import InDTO, OutDTO
 from cognee.modules.users.models import User
 from cognee.modules.search.operations import get_history
 from cognee.modules.users.methods import get_authenticated_user
+from cognee.modules.engine.models import NodeSet
+import traceback
+
+
 
 
 class SearchPayloadDTO(InDTO):
     search_type: SearchType
     query: str
     datasets: Union[list[str], str, None] = None
+    node_name: Optional[list[str]] = None
+    node_type: Optional[str] = None
 
 
 def get_search_router() -> APIRouter:
@@ -44,11 +50,14 @@ def get_search_router() -> APIRouter:
                 query_text=payload.query, 
                 query_type=payload.search_type, 
                 user=user,
-                datasets=payload.datasets
+                datasets=payload.datasets,
+                node_name=payload.node_name,
+                node_type=NodeSet
             )
 
             return results
         except Exception as error:
+            print(traceback.format_exc())
             return JSONResponse(status_code=409, content={"error": str(error)})
 
     return router
