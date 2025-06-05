@@ -212,3 +212,50 @@ createdb -O cognee cognee_db
 psql -d cognee_db -c 'CREATE EXTENSION IF NOT EXISTS vector;'
 ```
 
+# Adding Cognee Tasks (optional)
+This guide explains how to add a new task to the cognification pipeline in `cognify.py`. The cognification process is defined by a sequence of Task objects that are executed in order.
+
+First, implement your task as a function. The function should accept the required arguments and return the expected output for the pipeline.
+
+Example:
+```python
+def my_new_task(documents, **kwargs):
+    # Your task logic here
+    return documents
+```
+Place your task function in the appropriate module, such as `cognee/tasks/your_task_module.py`.
+
+Import your task function at the top of `cognify.py`
+```python
+from cognee.tasks.your_task_module import my_new_task
+```
+
+Locate the `get_default_tasks` function in `cognify.py`. Add your new task to the `default_tasks` list, wrapped in a Task object.
+You can add it at the desired position in the pipeline.
+
+```python
+default_tasks = [
+    Task(classify_documents),
+    Task(check_permissions_on_documents, user=user, permissions=["write"]),
+    # ... existing tasks ...
+    Task(my_new_task),  # <-- Your new task here
+    Task(calculate_graph_metrics),
+]
+```
+If your task needs specific parameters, pass them as keyword arguments to the Task constructor
+If your task requires configuration (e.g., batch size, model, etc.), provide these via the task_config or directly as kwargs in the Task initialization.
+
+```python
+Task(my_new_task, task_config={"batch_size": 20, "custom_param": "value"})
+```
+
+## Adding a prompt file to your task
+Some tasks may require a custom prompt to guide the LLM. To do this, you can read a prompt from a file and pass it into your task logic.
+
+Suppose you have a prompt file at `cognee/infrastructure/llm/prompts/custom_prompt.txt`.
+You can load this prompt in your task using a helper function (e.g., `read_query_prompt`) and feed it to your LLM client:
+```python
+from cognee.infrastructure.llm.prompts import read_query_prompt
+
+system_prompt = read_query_prompt("custom_prompt.txt")
+```
