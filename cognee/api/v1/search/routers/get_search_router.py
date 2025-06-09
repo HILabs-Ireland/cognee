@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID
 from datetime import datetime
 from typing import Union, Optional
@@ -20,6 +21,7 @@ class SearchPayloadDTO(InDTO):
     datasets: Union[list[str], str, None] = None
     node_name: Optional[list[str]] = None
     node_type: Optional[str] = None
+    top_k: Optional[int] = 10
 
 
 def get_search_router() -> APIRouter:
@@ -52,7 +54,8 @@ def get_search_router() -> APIRouter:
                 user=user,
                 datasets=payload.datasets,
                 node_name=payload.node_name,
-                node_type=NodeSet
+                node_type=NodeSet,
+                top_k=payload.top_k,
             )
 
             return results
