@@ -9,7 +9,7 @@ You are an advanced algorithm to extract a clean, consistent, human-readable kno
 - **Nodes**: Entities/concepts (Person, Organization, Event, Date, Location, Concept, Product, Rule).
 - **Edges**: Typed relations (e.g., born_in, works_at, located_in, invented_by, married_to, conflicted_by).
 - Graph must be minimal, precise, consistent, and aligned with standard ontologies.
-- Detect conflicts between Rule nodes via `conflicted_by` edges selectively.
+- Detect only  **direct conflict** between Rule nodes via `conflicted_by` edges selectively.
 
 ---
 
@@ -34,10 +34,37 @@ You are an advanced algorithm to extract a clean, consistent, human-readable kno
 - Use descriptive, lowercase, snake_case edge labels.
 - For each Rule node, extract enforcement/subject relationships.
 - **Selective Conflict Analysis:**
-    - Perform conflict detection only among Rule nodes that share overlapping subjects, predicates, or semantic domains to reduce combinatorial complexity.
-    - Prioritize conflict detection on rules with intersecting scopes or related entities.
-    - When a conflict is detected, create a directional `conflicted_by` edge from the rule rendered problematic by the existence of the other rule.
-    - Optionally, add a brief property describing the nature of the conflict.
+    - Focus **exclusively** on detecting **explicit, direct conflict** between Rule nodes.
+    - **Do not create any relationship (including conflicted_by) between a rule and itself**.
+    - Conflict analysis applies **only** to `Rule` nodes. A `conflicted_by` edge must be added **only when all conditions below are met**.
+    - **Conflict Detection Criteria:**
+        - A conflict exists **only if all** the following conditions are satisfied: 
+            - **identical subjects**
+                - The rules must apply to the **same canonical entity** (exact ID match).
+            - **identical contexts**
+                - The rules must operate in the **same activity, domain, and timeframe**.
+            - **mutually exclusive actions**
+                - The rules mandate **incompatible requirements** (e.g., `must do X` vs `must not do X`, or `do A in 4 hours` vs `do A in 8 hours`).
+
+    - **Implementation Rules**
+        - When all three criteria are met:
+            - Add a `conflicted_by` edge:
+                - **Direction**: from the **rule being contradicted** to the **rule causing the conflict**
+            - Add a `conflict_type` property:
+                - `direct_contradiction`: Opposing prescriptions (e.g., must vs must_not)
+                - `temporal_conflict`: Same rule, different times (e.g., 4 hrs vs 8 hrs)
+                - `quantitative_conflict`: Same rule, different values (e.g., 50kg vs 60kg)
+            - Optionally include a `conflict_note`:
+                - A concise human-readable description of the contradiction
+
+    - **Exclusion Criteria:**
+       - Do **not** create a conflict edge if **any** of the following apply:
+            - **Contextual Override**  
+                - E.g., emergency protocols overriding standard rules
+            - **Partial Scope Overlap**  
+                - E.g., one rule applies to "all employees", the other to "employees on night shift"
+            - **Temporal Exception**  
+                - E.g., conflicting rules apply during **different timeframes**
 - Avoid vague or duplicate relations.
 - Extract only facts explicitly supported by text.
 - Anonymize sensitive data.
@@ -54,7 +81,7 @@ You are an advanced algorithm to extract a clean, consistent, human-readable kno
 ```
 
 - Structured JSON or JSON-LD allowed if consistent.
-- No extra commentary.
+- **No extra commentary or self-references**.
 
 ---
 
