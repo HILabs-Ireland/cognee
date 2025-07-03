@@ -14,6 +14,7 @@ from cognee.tasks.documents import (
     extract_chunks_from_documents,
 )
 from cognee.tasks.graph import extract_graph_from_data
+from cognee.tasks.graph.detect_and_update_conflicts import detect_and_update_conflicts
 from cognee.tasks.storage import add_data_points
 from cognee.tasks.summarization import summarize_text
 from cognee.modules.chunking.TextChunker import TextChunker
@@ -61,6 +62,11 @@ async def get_default_tasks(  # TODO: Find out a better way to do this (Boris's 
             ontology_adapter=OntologyResolver(ontology_file=ontology_file_path),
             task_config={"batch_size": 10},
         ),  # Generate knowledge graphs from the document chunks.
+        Task(
+            detect_and_update_conflicts,
+            graph_model=graph_model,
+            task_config={"batch_size": 10},
+        ),  # Detect conflicts and update graph with conflict annotations.
         Task(
             summarize_text,
             task_config={"batch_size": 10},

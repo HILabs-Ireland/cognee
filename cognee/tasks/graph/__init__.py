@@ -1,2 +1,3 @@
 from .extract_graph_from_data import extract_graph_from_data
 from .extract_graph_from_code import extract_graph_from_code
+from .detect_and_update_conflicts import detect_and_update_conflicts
