@@ -14,7 +14,6 @@ from cognee.modules.graph.utils import (
 from cognee.shared.data_models import KnowledgeGraph
 from cognee.tasks.storage import add_data_points
 
-
 async def integrate_chunk_graphs(
     data_chunks: list[DocumentChunk],
     chunk_graphs: list,
