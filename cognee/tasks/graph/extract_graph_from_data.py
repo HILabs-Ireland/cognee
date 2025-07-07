@@ -13,8 +13,6 @@ from cognee.modules.graph.utils import (
 )
 from cognee.shared.data_models import KnowledgeGraph
 from cognee.tasks.storage import add_data_points
-from cognee.infrastructure.llm.get_llm_client import get_llm_client
-from cognee.modules.graph.cognee_graph.CogneeGraphElements import Edge
 
 async def integrate_chunk_graphs(
     data_chunks: list[DocumentChunk],
@@ -24,7 +22,6 @@ async def integrate_chunk_graphs(
 ) -> List[DocumentChunk]:
     """Updates DocumentChunk objects, integrates data points and edges into databases."""
     graph_engine = await get_graph_engine()
-    rules_for_llm = []
 
     if graph_model is not KnowledgeGraph:
         for chunk_index, chunk_graph in enumerate(chunk_graphs):
