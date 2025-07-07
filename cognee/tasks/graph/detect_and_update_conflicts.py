@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from cognee.infrastructure.databases.graph import get_graph_engine
 from cognee.infrastructure.llm.get_llm_client import get_llm_client
+from cognee.infrastructure.llm.prompts import read_query_prompt
 from cognee.modules.chunking.models.DocumentChunk import DocumentChunk
 from cognee.shared.data_models import KnowledgeGraph, Edge as KGEdge
 from cognee.shared.logging_utils import get_logger
@@ -16,84 +17,16 @@ class ConflictEdge(BaseModel):
     source_node_id: str
     target_node_id: str
     relationship_name: str = "conflicted_by"
-    conflict_type: str = Field(..., description="Type of conflict: direct_contradiction, temporal_conflict, quantitative_conflict, semantic_conflict")
-    confidence_score: float = Field(..., ge=0.0, le=1.0, description="Confidence score for the conflict detection")
-    conflict_description: str = Field(..., description="Human-readable description of the conflict")
+    conflict_type: str
+    confidence_score: float
+    conflict_description: str
 
 class ConflictDetectionResult(BaseModel):
     """Result of conflict detection analysis."""
-    conflicts: List[ConflictEdge] = Field(default_factory=list)
-    summary: str = Field(..., description="Summary of conflicts detected")
+    conflicts: List[ConflictEdge]
+    summary: str
 
-# LLM prompt for conflict detection
-CONFLICT_DETECTION_PROMPT = """
-You are an advanced conflict detection engine for knowledge graphs. Your task is to identify all pairs of rule nodes that have **explicit, direct conflicts** within the complete graph structure as a unified system and create a relationship labeled **_only_ as**:  `conflicted_by`.
-
-## **Conflict Detection Criteria:**
-    - A conflict exists **only if all** the following conditions are satisfied: 
-        - **identical subjects**
-             - The rules must apply to the **same canonical entity** (exact ID match).
-        - **identical contexts**
-            - The rules must operate in the **same activity, domain, and timeframe**.
-        - **mutually exclusive actions**
-            - The rules mandate **incompatible requirements** (e.g., `must do X` vs `must not do X`, or `do A in 4 hours` vs `do A in 8 hours`).
-
-    - **Implementation Rules**
-        - When all three criteria are met:
-            - Add a `conflicted_by` edge:
-                - **Direction**: from the **rule being contradicted** to the **rule causing the conflict**
-            - Add a `conflict_type` property:
-                - `direct_contradiction`: Opposing prescriptions (e.g., must vs must_not)
-                - `temporal_conflict`: Same rule, different times (e.g., 4 hrs vs 8 hrs)
-                - `quantitative_conflict`: Same rule, different values (e.g., 50kg vs 60kg)
-            - Optionally include a `conflict_note`:
-                - A concise human-readable description of the contradiction
-
-    - **Exclusion Criteria:**
-       - Do **not** create a conflict edge if **any** of the following apply:
-            - **Contextual Override**  
-                - E.g., emergency protocols overriding standard rules
-            - **Partial Scope Overlap**  
-                - E.g., one rule applies to "all employees", the other to "employees on night shift"
-            - **Temporal Exception**  
-                - E.g., conflicting rules apply during **different timeframes**
-
-## Complete Graph Analysis Guidelines:
-
-- Analyze the **ENTIRE graph structure** as a unified system
-- Consider **cross-chunk relationships** and global patterns
-- Look for **transitive conflicts** (A conflicts with B, B conflicts with C)
-- Identify **systemic inconsistencies** that span multiple nodes/edges
-- Consider **domain-specific rules** and constraints
-- Examine **node clustering** for potential duplicates or conflicts
-
-## Confidence Scoring:
-
-- **0.9-1.0**: Very high confidence (explicit, undeniable contradiction)
-- **0.8-0.89**: High confidence (strong semantic conflict with clear evidence)
-- **0.7-0.79**: Good confidence (likely conflict with supporting evidence)
-- **0.6-0.69**: Medium confidence (potential conflict requiring review)
-- **0.5-0.59**: Low confidence (flag for human review)
-- **Below 0.5**: Very low confidence (exclude from results)
-
-## Analysis Requirements:
-
-- **Global Perspective**: Consider the entire graph, not just local relationships
-- **Evidence-Based**: Provide specific evidence for each detected conflict
-- **Context-Aware**: Consider domain context and semantic meaning
-- **Systematic**: Look for patterns and systemic issues
-- **Precise**: Avoid false positives by requiring substantial evidence
-
-## Output Requirements:
-
-Return a comprehensive analysis with:
-- List of detected conflicts with detailed evidence
-- Conflict type classification and confidence scores
-- Clear descriptions explaining the conflict reasoning
-- Summary of overall graph health and conflict patterns
-
-Focus on **quality over quantity** - it's better to miss some conflicts than to create false positives.
-"""
+CONFLICT_DETECTION_PROMPT_PATH = "conflict_detection_for_graph.txt"
 
 
 async def extract_complete_graph_data(data_chunks: List[DocumentChunk]) -> Dict[str, Any]:
@@ -115,7 +48,6 @@ async def extract_complete_graph_data(data_chunks: List[DocumentChunk]) -> Dict[
                     node_id = str(getattr(entity, 'id', ''))
                     entity_name = getattr(entity, 'name', '')
 
-                    # Handle entity type - could be an object with 'name' attribute or a string
                     entity_type = ''
                     if hasattr(entity, 'is_a'):
                         is_a_attr = getattr(entity, 'is_a', None)
@@ -171,7 +103,6 @@ async def extract_complete_graph_data(data_chunks: List[DocumentChunk]) -> Dict[
                         "properties": edge[3] if len(edge) > 3 and isinstance(edge[3], dict) else {}
                     }
                 else:
-                    # Handle edge objects
                     edge_data = {
                         "source_node_id": str(getattr(edge, 'source_node_id', '')),
                         "target_node_id": str(getattr(edge, 'target_node_id', '')),
@@ -226,9 +157,12 @@ async def analyze_conflicts_in_complete_graph(
             "analysis_scope": "complete_graph"
         }
 
+        # Load conflict detection prompt from external file
+        conflict_detection_prompt = read_query_prompt(CONFLICT_DETECTION_PROMPT_PATH)
+
         # Enhanced prompt for complete graph analysis
         enhanced_prompt = f"""
-{CONFLICT_DETECTION_PROMPT}
+{conflict_detection_prompt}
 
 ## Complete Graph Analysis Context:
 - Total nodes: {unified_graph['total_nodes']}
@@ -250,9 +184,6 @@ async def analyze_conflicts_in_complete_graph(
             if conflict.confidence_score >= confidence_threshold
         ]
 
-        logger.info(f"Complete graph analysis: {len(conflict_result.conflicts)} total conflicts detected, "
-                   f"{len(high_confidence_conflicts)} above confidence threshold {confidence_threshold}")
-
         return ConflictDetectionResult(
             conflicts=high_confidence_conflicts,
             summary=f"Complete graph analysis: {conflict_result.summary}"
@@ -271,17 +202,6 @@ async def update_graph_with_conflicts(
     graph_engine,
     update_mode: str = "annotate"
 ) -> Dict[str, Any]:
-    """
-    Update the graph with detected conflicts.
-    
-    Args:
-        conflicts: List of detected conflicts
-        graph_engine: Graph database engine
-        update_mode: How to handle conflicts ("annotate" or "add_edges")
-        
-    Returns:
-        Dictionary with update statistics
-    """
     update_stats = {
         "conflicts_processed": 0,
         "edges_added": 0,
@@ -336,24 +256,6 @@ async def detect_and_update_conflicts(
     confidence_threshold: float = 0.7,
     update_mode: str = "add_edges"
 ) -> List[DocumentChunk]:
-    """
-    LLM-based conflict detection and graph update task for complete graph analysis.
-
-    This task analyzes the entire graph structure as a unified unit for conflicts,
-    such as contradictory relationships, duplicate nodes, or inconsistent edge types.
-    It then updates the graph by marking or annotating conflicted edges.
-
-    Args:
-        data_chunks: List of document chunks containing graph data
-        graph_model: Graph model class (default: KnowledgeGraph)
-        confidence_threshold: Minimum confidence score for conflict detection (default: 0.7)
-        update_mode: How to handle conflicts - "add_edges" or "annotate" (default: "add_edges")
-
-    Returns:
-        List of document chunks (unchanged, as this is a graph analysis task)
-    """
-    logger.info(f"Starting complete graph conflict detection on {len(data_chunks)} document chunks")
-
     try:
         # Initialize LLM client and graph engine
         llm_client = get_llm_client()
