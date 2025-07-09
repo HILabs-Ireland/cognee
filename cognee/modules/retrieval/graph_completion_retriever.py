@@ -10,6 +10,8 @@ from cognee.modules.retrieval.utils.brute_force_triplet_search import brute_forc
 from cognee.modules.retrieval.utils.completion import generate_completion
 from cognee.modules.retrieval.utils.stop_words import DEFAULT_STOP_WORDS
 from cognee.infrastructure.databases.graph import get_graph_engine
+from cognee.modules.engine.models import Entity
+
 
 
 
@@ -277,14 +279,11 @@ class GraphCompletionRetriever(BaseRetriever):
             if hasattr(graph_engine, 'get_nodeset_subgraph') and node_names:
                 # Force node_type to Entity to return only entity nodes
                 if node_type is None:
-                    # Import Entity type for filtering
                     try:
-                        from cognee.modules.engine.models import Entity
                         node_type = Entity
                         logger.debug("Using Entity as node_type to fetch only entity nodes")
                     except ImportError:
                         logger.warning("Could not import Entity type, using fallback query method")
-                        return await self._fetch_rule_entities_fallback_query(graph_engine, node_names)
 
                 logger.debug(f"Using get_nodeset_subgraph with node_type: {node_type.__name__} (rule entities only)")
 
@@ -317,13 +316,11 @@ class GraphCompletionRetriever(BaseRetriever):
 
             else:
                 logger.warning("get_nodeset_subgraph not available, using fallback query method")
-                return await self._fetch_rule_entities_fallback_query(graph_engine, node_names)
 
         except Exception as e:
             logger.error(f"Error fetching rule entities using get_nodeset_subgraph for nodesets {node_names}: {str(e)}")
             logger.exception("Full exception details:")
             logger.info("Attempting fallback query method")
-            return await self._fetch_rule_entities_fallback_query(graph_engine, node_names)
 
         return rule_entities
 
@@ -370,52 +367,6 @@ class GraphCompletionRetriever(BaseRetriever):
             return True
 
         return False
-
-    async def _fetch_rule_entities_fallback_query(self, graph_engine, node_names: List[str]) -> Dict[str, Dict]:
-        """Fallback method to fetch rule entities using direct graph queries."""
-        logger = logging.getLogger(__name__)
-        rule_entities = {}
-
-        try:
-            if hasattr(graph_engine, 'query') and node_names:
-                # Query for entity type nodes with entity_type = 'rule'
-                query = """
-                MATCH (n:Entity)
-                WHERE n.name IN $node_names
-                AND (n.entity_type = 'rule' OR n.type = 'rule' OR EXISTS(n.rule) OR EXISTS(n.policy))
-                RETURN n
-                """
-
-                logger.debug(f"Executing fallback rule entity query: {query}")
-                results = await graph_engine.query(query, {'node_names': node_names})
-                logger.debug(f"Fallback rule entity query returned {len(results)} results")
-
-                for result in results:
-                    # Handle different result formats
-                    if isinstance(result, tuple) and len(result) > 0:
-                        node = result[0]
-                    elif isinstance(result, dict):
-                        node = result.get('n', {})
-                    else:
-                        continue
-
-                    if node:
-                        node_dict = self._normalize_node_data(node)
-                        node_id = str(self._get_node_property(node, 'id', ''))
-                        node_name = self._get_node_property(node, 'name', 'N/A')
-
-                        if node_id and self._is_rule_entity(node_dict):
-                            rule_entities[node_id] = node_dict
-                            entity_type = node_dict.get('entity_type', node_dict.get('type', 'Unknown'))
-                            logger.debug(f"Added rule entity via fallback: {node_name} (ID: {node_id}, EntityType: {entity_type})")
-
-            logger.info(f"Fallback method fetched {len(rule_entities)} rule entities for nodesets: {node_names}")
-
-        except Exception as e:
-            logger.error(f"Error in fallback rule entity fetching for nodesets {node_names}: {str(e)}")
-            logger.exception("Full exception details:")
-
-        return rule_entities
 
     async def _fetch_conflict_edges(self, graph_engine, target_rules: Dict[str, Dict]) -> List[Dict]:
         """
