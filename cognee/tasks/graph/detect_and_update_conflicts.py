@@ -29,66 +29,10 @@ class ConflictDetectionResult(BaseModel):
 CONFLICT_DETECTION_PROMPT_PATH = "conflict_detection_for_graph.txt"
 
 
-def _is_rule_entity(entity_data: Dict[str, Any]) -> bool:
-    """Check if an entity is of type 'rule'."""
-    # Check for explicit entity_type field
-    entity_type = entity_data.get('entity_type', '').lower()
-    if entity_type == 'rule':
-        return True
-
-    # Exclude non-rule entity types explicitly
-    excluded_types = ['person', 'location', 'concept', 'document', 'organization', 'event', 'time']
-    if entity_type in excluded_types:
-        return False
-
-    # Check type field as fallback
-    node_type = entity_data.get('type', '').lower()
-    if node_type == 'rule':
-        return True
-    if node_type in excluded_types:
-        return False
-
-    # Check for rule-specific properties
-    rule_indicators = [
-        'rule',           # Direct rule field
-        'rule_text',      # Rule text field
-        'policy',         # Policy rules
-        'constraint',     # Constraint rules
-        'requirement'     # Requirement rules
-    ]
-
-    # Must have name and rule indicators
-    has_name = 'name' in entity_data
-    has_rule_content = any(indicator in entity_data for indicator in rule_indicators)
-
-    # Check if it has rule-like content in description (but be more specific)
-    description = entity_data.get('description', '').lower()
-    content = entity_data.get('content', '').lower()
-
-    # Look for rule-like language patterns that indicate actual rules/policies
-    rule_patterns = [
-        'must ', 'shall ', 'required to', 'mandatory', 'prohibited', 'forbidden',
-        'policy states', 'regulation requires', 'rule specifies', 'constraint is',
-        'requirement is', 'users must', 'employees must', 'all users shall',
-        'it is required', 'compliance requires'
-    ]
-
-    has_rule_description = any(pattern in description or pattern in content
-                             for pattern in rule_patterns)
-
-    # Return True only if it's clearly a rule entity and not excluded
-    if has_name and (has_rule_content or has_rule_description):
-        return True
-
-    return False
-
-
 async def extract_complete_graph_data(data_chunks: List[DocumentChunk]) -> Dict[str, Any]:
     all_nodes = {}
     all_edges = []
     chunk_metadata = []
-    total_entities_processed = 0
-    rule_entities_included = 0
 
     for chunk in data_chunks:
         chunk_info = {
@@ -101,19 +45,11 @@ async def extract_complete_graph_data(data_chunks: List[DocumentChunk]) -> Dict[
             entities = getattr(chunk, 'contains', [])
             for entity in entities:
                 try:
-                    total_entities_processed += 1
                     node_id = str(getattr(entity, 'id', ''))
                     entity_name = getattr(entity, 'name', '')
 
-                    # Extract entity type information
                     entity_type = ''
-                    entity_type_field = ''
-
-                    # Check for entity_type field first (most specific)
-                    if hasattr(entity, 'entity_type'):
-                        entity_type_field = str(getattr(entity, 'entity_type', ''))
-                        entity_type = entity_type_field
-                    elif hasattr(entity, 'is_a'):
+                    if hasattr(entity, 'is_a'):
                         is_a_attr = getattr(entity, 'is_a', None)
                         if is_a_attr:
                             if hasattr(is_a_attr, 'name'):
@@ -125,43 +61,23 @@ async def extract_complete_graph_data(data_chunks: List[DocumentChunk]) -> Dict[
 
                     entity_description = getattr(entity, 'description', '')
 
-                    # Extract additional rule-related fields
-                    rule_content = ''
-                    if hasattr(entity, 'rule'):
-                        rule_content = str(getattr(entity, 'rule', ''))
-                    elif hasattr(entity, 'policy'):
-                        rule_content = str(getattr(entity, 'policy', ''))
-                    elif hasattr(entity, 'constraint'):
-                        rule_content = str(getattr(entity, 'constraint', ''))
-                    elif hasattr(entity, 'requirement'):
-                        rule_content = str(getattr(entity, 'requirement', ''))
-
                     node_data = {
                         "id": node_id,
                         "name": entity_name,
                         "type": entity_type,
-                        "entity_type": entity_type_field,
                         "description": entity_description,
-                        "rule": rule_content,
                         "source_chunk": str(chunk.id)
                     }
 
-                    # Only include rule entities
-                    if _is_rule_entity(node_data):
-                        rule_entities_included += 1
-
-                        # Avoid duplicate nodes, but track all sources
-                        if node_id in all_nodes:
-                            if "source_chunks" not in all_nodes[node_id]:
-                                all_nodes[node_id]["source_chunks"] = [all_nodes[node_id]["source_chunk"]]
-                            all_nodes[node_id]["source_chunks"].append(str(chunk.id))
-                        else:
-                            all_nodes[node_id] = node_data
-
-                        chunk_info["entities"].append(node_data)
-                        logger.debug(f"Included rule entity: {entity_name} (ID: {node_id}, Type: {entity_type})")
+                    # Avoid duplicate nodes, but track all sources
+                    if node_id in all_nodes:
+                        if "source_chunks" not in all_nodes[node_id]:
+                            all_nodes[node_id]["source_chunks"] = [all_nodes[node_id]["source_chunk"]]
+                        all_nodes[node_id]["source_chunks"].append(str(chunk.id))
                     else:
-                        logger.debug(f"Filtered out non-rule entity: {entity_name} (ID: {node_id}, Type: {entity_type})")
+                        all_nodes[node_id] = node_data
+
+                    chunk_info["entities"].append(node_data)
 
                 except Exception as e:
                     logger.warning(f"Error processing entity {entity}: {str(e)}")
@@ -170,7 +86,6 @@ async def extract_complete_graph_data(data_chunks: List[DocumentChunk]) -> Dict[
         chunk_metadata.append(chunk_info)
 
     # Extract relationships/edges from graph structure if available
-    # Only include edges between rule entities
     try:
         from cognee.infrastructure.databases.graph import get_graph_engine
         graph_engine = await get_graph_engine()
@@ -178,15 +93,8 @@ async def extract_complete_graph_data(data_chunks: List[DocumentChunk]) -> Dict[
         # Get all edges in the graph
         graph_nodes, graph_edges = await graph_engine.get_graph_data()
 
-        # Create a set of rule entity IDs for fast lookup
-        rule_entity_ids = set(all_nodes.keys())
-        total_edges_processed = 0
-        rule_edges_included = 0
-
         for edge in graph_edges:
             try:
-                total_edges_processed += 1
-
                 if isinstance(edge, tuple):
                     edge_data = {
                         "source_node_id": str(edge[0]) if len(edge) > 0 else '',
@@ -202,27 +110,12 @@ async def extract_complete_graph_data(data_chunks: List[DocumentChunk]) -> Dict[
                         "properties": getattr(edge, 'properties', {}) if hasattr(edge, 'properties') else {}
                     }
 
-                # Only include edges where both source and target are rule entities
-                source_id = edge_data["source_node_id"]
-                target_id = edge_data["target_node_id"]
-
-                if (source_id and target_id and
-                    source_id in rule_entity_ids and
-                    target_id in rule_entity_ids):
+                if edge_data["source_node_id"] and edge_data["target_node_id"]:
                     all_edges.append(edge_data)
-                    rule_edges_included += 1
-                    logger.debug(f"Included rule-to-rule edge: {source_id} → {target_id} ({edge_data['relationship_name']})")
-                else:
-                    logger.debug(f"Filtered out non-rule edge: {source_id} → {target_id}")
 
             except Exception as edge_error:
                 logger.warning(f"Error processing individual edge: {str(edge_error)}")
                 continue
-
-        logger.info(f"Edge filtering completed:")
-        logger.info(f"  - Total edges processed: {total_edges_processed}")
-        logger.info(f"  - Rule-to-rule edges included: {rule_edges_included}")
-        logger.info(f"  - Non-rule edges filtered: {total_edges_processed - rule_edges_included}")
 
     except Exception as e:
         logger.warning(f"Could not extract edges from graph engine: {str(e)}")
@@ -233,21 +126,10 @@ async def extract_complete_graph_data(data_chunks: List[DocumentChunk]) -> Dict[
         "chunk_metadata": chunk_metadata,
         "total_nodes": len(all_nodes),
         "total_edges": len(all_edges),
-        "total_chunks": len(data_chunks),
-        "filtering_stats": {
-            "total_entities_processed": total_entities_processed,
-            "rule_entities_included": rule_entities_included,
-            "non_rule_entities_filtered": total_entities_processed - rule_entities_included
-        }
+        "total_chunks": len(data_chunks)
     }
 
-    logger.info(f"Extracted unified graph with rule entity filtering:")
-    logger.info(f"  - Total entities processed: {total_entities_processed}")
-    logger.info(f"  - Rule entities included: {rule_entities_included}")
-    logger.info(f"  - Non-rule entities filtered: {total_entities_processed - rule_entities_included}")
-    logger.info(f"  - Total edges: {len(all_edges)}")
-    logger.info(f"  - Source chunks: {len(data_chunks)}")
-
+    logger.info(f"Extracted unified graph: {len(all_nodes)} nodes, {len(all_edges)} edges from {len(data_chunks)} chunks")
     return unified_graph
 
 
@@ -264,9 +146,6 @@ async def analyze_conflicts_in_complete_graph(
                 summary="No graph data available for conflict analysis"
             )
 
-        # Get filtering statistics
-        filtering_stats = unified_graph.get("filtering_stats", {})
-
         # Prepare comprehensive context for LLM analysis
         analysis_context = {
             "total_nodes": unified_graph["total_nodes"],
@@ -275,28 +154,20 @@ async def analyze_conflicts_in_complete_graph(
             "nodes": unified_graph["nodes"],
             "edges": unified_graph["edges"],
             "confidence_threshold": confidence_threshold,
-            "analysis_scope": "rule_entities_only",
-            "filtering_stats": filtering_stats
+            "analysis_scope": "complete_graph"
         }
 
         # Load conflict detection prompt from external file
         conflict_detection_prompt = read_query_prompt(CONFLICT_DETECTION_PROMPT_PATH)
 
-        # Enhanced prompt for rule entity conflict analysis
+        # Enhanced prompt for complete graph analysis
         enhanced_prompt = f"""
 {conflict_detection_prompt}
 
-## Rule Entity Conflict Analysis Context:
-- Rule entities (nodes): {unified_graph['total_nodes']}
-- Rule-to-rule edges: {unified_graph['total_edges']}
+## Complete Graph Analysis Context:
+- Total nodes: {unified_graph['total_nodes']}
+- Total edges: {unified_graph['total_edges']}
 - Source chunks: {unified_graph['total_chunks']}
-- Entity filtering applied: Only entities with entity_type='rule' are included
-- Total entities processed: {filtering_stats.get('total_entities_processed', 'N/A')}
-- Non-rule entities filtered: {filtering_stats.get('non_rule_entities_filtered', 'N/A')}
-
-IMPORTANT: All nodes in this analysis are rule entities (policies, constraints, requirements, regulations).
-Focus on detecting conflicts between rules that contradict each other, have incompatible requirements,
-or create logical inconsistencies in policy enforcement.
 
 """
 
