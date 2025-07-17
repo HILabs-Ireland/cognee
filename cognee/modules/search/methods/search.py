@@ -8,6 +8,7 @@ from cognee.modules.retrieval.insights_retriever import InsightsRetriever
 from cognee.modules.retrieval.summaries_retriever import SummariesRetriever
 from cognee.modules.retrieval.completion_retriever import CompletionRetriever
 from cognee.modules.retrieval.graph_completion_retriever import GraphCompletionRetriever
+from cognee.modules.retrieval.graph_completion_conflict_retriever import GraphCompletionConflictRetriever
 from cognee.modules.retrieval.graph_summary_completion_retriever import (
     GraphSummaryCompletionRetriever,
 )
@@ -80,6 +81,12 @@ async def specific_search(
             system_prompt_path=system_prompt_path, top_k=top_k
         ).get_completion,
         SearchType.GRAPH_COMPLETION: GraphCompletionRetriever(
+            system_prompt_path=system_prompt_path,
+            top_k=top_k,
+            node_type=node_type,
+            node_name=node_name,
+        ).get_completion,
+        SearchType.GRAPH_COMPLETION_WITH_CONFLICTS: GraphCompletionConflictRetriever(
             system_prompt_path=system_prompt_path,
             top_k=top_k,
             node_type=node_type,

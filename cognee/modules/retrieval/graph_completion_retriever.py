@@ -10,6 +10,8 @@ from cognee.modules.retrieval.utils.completion import generate_completion
 from cognee.modules.retrieval.utils.stop_words import DEFAULT_STOP_WORDS
 
 
+
+
 class GraphCompletionRetriever(BaseRetriever):
     """
     Retriever for handling graph-based completion searches.
@@ -163,6 +165,26 @@ class GraphCompletionRetriever(BaseRetriever):
             system_prompt_path=self.system_prompt_path,
         )
         return [completion]
+
+    def _top_n_words(self, text, stop_words=None, top_n=3, separator=", "):
+        """Concatenates the top N frequent words in text."""
+        if stop_words is None:
+            stop_words = DEFAULT_STOP_WORDS
+
+        words = [word.lower().strip(string.punctuation) for word in text.split()]
+
+        if stop_words:
+            words = [word for word in words if word and word not in stop_words]
+
+        top_words = [word for word, freq in Counter(words).most_common(top_n)]
+
+        return separator.join(top_words)
+
+    def _get_title(self, text: str, first_n_words: int = 7, top_n_words: int = 3) -> str:
+        """Creates a title, by combining first words with most frequent words from the text."""
+        first_n_words = text.split()[:first_n_words]
+        top_n_words = self._top_n_words(text, top_n=top_n_words)
+        return f"{' '.join(first_n_words)}... [{top_n_words}]"
 
     def _top_n_words(self, text, stop_words=None, top_n=3, separator=", "):
         """Concatenates the top N frequent words in text."""

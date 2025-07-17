@@ -29,6 +29,126 @@ class ConflictDetectionResult(BaseModel):
 CONFLICT_DETECTION_PROMPT_PATH = "conflict_detection_for_graph.txt"
 
 
+def _is_rule_entity(node_data: Dict) -> bool:
+    """
+    Check if a node is an entity with entity type 'rule'.
+
+    This function checks various fields to determine if an entity represents a rule:
+    - entity_type field (direct or nested)
+    - type field as fallback
+    - rule-specific properties and content indicators
+
+    Args:
+        node_data (Dict): The node data dictionary to check
+
+    Returns:
+        bool: True if the entity is a rule entity, False otherwise
+    """
+    # Check for explicit entity_type field
+    entity_type = node_data.get('entity_type', '').lower()
+    if entity_type == 'rule':
+        return True
+
+    # Check for entity_type in nested structures
+    if isinstance(node_data.get('entity_type'), dict):
+        nested_type = node_data.get('entity_type', {}).get('value', '').lower()
+        if nested_type == 'rule':
+            return True
+
+    # Check node type field as fallback
+    node_type = node_data.get('type', '').lower()
+    if node_type == 'rule':
+        return True
+
+    # Check for rule-specific properties that indicate this is a rule entity
+    rule_indicators = [
+        'rule',           # Direct rule field
+        'rule_text',      # Rule text field
+        'policy',         # Policy rules
+        'constraint',     # Constraint rules
+        'requirement'     # Requirement rules
+    ]
+
+    # Must have entity-like structure AND rule indicators
+    has_name = 'name' in node_data
+    has_rule_content = any(indicator in node_data for indicator in rule_indicators)
+
+    # Check if it has rule-like content in description
+    description = node_data.get('description', '').lower()
+    content = node_data.get('content', '').lower()
+
+    has_rule_description = any(rule_word in description or rule_word in content
+                             for rule_word in ['rule', 'policy', 'must', 'shall', 'required', 'mandatory'])
+
+    # Return True only if it's clearly a rule entity
+    if has_name and (has_rule_content or has_rule_description):
+        return True
+
+    return False
+
+
+def filter_unified_graph_for_rules(unified_graph: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Filter the unified graph to only include rule entities and edges between rule entities.
+
+    Args:
+        unified_graph (Dict[str, Any]): The original unified graph
+
+    Returns:
+        Dict[str, Any]: Filtered unified graph containing only rule entities
+    """
+    logger.info("Filtering unified graph to include only rule entities")
+
+    # Filter nodes to only include rule entities
+    rule_nodes = []
+    rule_node_ids = set()
+
+    for node in unified_graph.get("nodes", []):
+        if _is_rule_entity(node):
+            rule_nodes.append(node)
+            rule_node_ids.add(node.get("id", ""))
+        else:
+            node_name = node.get("name", "Unknown")
+            node_type = node.get("type", "Unknown")
+            logger.debug(f"Filtering out non-rule entity: {node_name} (Type: {node_type})")
+
+    # Filter edges to only include edges between rule entities
+    rule_edges = []
+    for edge in unified_graph.get("edges", []):
+        source_id = edge.get("source_node_id", "")
+        target_id = edge.get("target_node_id", "")
+
+        if source_id in rule_node_ids and target_id in rule_node_ids:
+            rule_edges.append(edge)
+            logger.debug(f"Including edge between rule entities: {source_id} -> {target_id}")
+        else:
+            logger.debug(f"Filtering out edge not between rule entities: {source_id} -> {target_id}")
+
+    # Update chunk metadata to only include rule entities
+    filtered_chunk_metadata = []
+    for chunk_info in unified_graph.get("chunk_metadata", []):
+        filtered_entities = []
+        for entity in chunk_info.get("entities", []):
+            if _is_rule_entity(entity):
+                filtered_entities.append(entity)
+
+        chunk_info_copy = chunk_info.copy()
+        chunk_info_copy["entities"] = filtered_entities
+        filtered_chunk_metadata.append(chunk_info_copy)
+
+    filtered_graph = {
+        "nodes": rule_nodes,
+        "edges": rule_edges,
+        "chunk_metadata": filtered_chunk_metadata,
+        "total_nodes": len(rule_nodes),
+        "total_edges": len(rule_edges),
+        "total_chunks": unified_graph.get("total_chunks", 0)
+    }
+
+    logger.info(f"Filtered unified graph: {len(rule_nodes)} rule entities, {len(rule_edges)} edges between rule entities")
+    return filtered_graph
+
+
 async def extract_complete_graph_data(data_chunks: List[DocumentChunk]) -> Dict[str, Any]:
     all_nodes = {}
     all_edges = []
@@ -65,9 +185,17 @@ async def extract_complete_graph_data(data_chunks: List[DocumentChunk]) -> Dict[
                         "id": node_id,
                         "name": entity_name,
                         "type": entity_type,
+                        "entity_type": entity_type,  # Add entity_type field for consistency
                         "description": entity_description,
                         "source_chunk": str(chunk.id)
                     }
+
+                    # Only process rule entities for conflict detection
+                    if not _is_rule_entity(node_data):
+                        logger.debug(f"Skipping non-rule entity: {entity_name} (Type: {entity_type})")
+                        continue
+
+                    logger.debug(f"Including rule entity: {entity_name} (Type: {entity_type})")
 
                     # Avoid duplicate nodes, but track all sources
                     if node_id in all_nodes:
@@ -110,8 +238,16 @@ async def extract_complete_graph_data(data_chunks: List[DocumentChunk]) -> Dict[
                         "properties": getattr(edge, 'properties', {}) if hasattr(edge, 'properties') else {}
                     }
 
-                if edge_data["source_node_id"] and edge_data["target_node_id"]:
+                # Only include edges where both source and target are rule entities
+                source_id = edge_data["source_node_id"]
+                target_id = edge_data["target_node_id"]
+
+                if source_id and target_id and source_id in all_nodes and target_id in all_nodes:
+                    # Both nodes are rule entities (since all_nodes only contains rule entities now)
                     all_edges.append(edge_data)
+                    logger.debug(f"Including edge between rule entities: {source_id} -> {target_id}")
+                else:
+                    logger.debug(f"Skipping edge - not between rule entities: {source_id} -> {target_id}")
 
             except Exception as edge_error:
                 logger.warning(f"Error processing individual edge: {str(edge_error)}")
@@ -129,7 +265,7 @@ async def extract_complete_graph_data(data_chunks: List[DocumentChunk]) -> Dict[
         "total_chunks": len(data_chunks)
     }
 
-    logger.info(f"Extracted unified graph: {len(all_nodes)} nodes, {len(all_edges)} edges from {len(data_chunks)} chunks")
+    logger.info(f"Extracted unified graph with rule entities only: {len(all_nodes)} rule nodes, {len(all_edges)} edges from {len(data_chunks)} chunks")
     return unified_graph
 
 
@@ -140,40 +276,67 @@ async def analyze_conflicts_in_complete_graph(
 ) -> ConflictDetectionResult:
     try:
         if not unified_graph["nodes"]:
-            logger.debug("No nodes found in unified graph")
+            logger.debug("No rule entities found in unified graph")
             return ConflictDetectionResult(
                 conflicts=[],
-                summary="No graph data available for conflict analysis"
+                summary="No rule entities available for conflict analysis"
             )
 
-        # Prepare comprehensive context for LLM analysis
+        # Double-check that all nodes in the unified graph are rule entities
+        rule_nodes = []
+        non_rule_nodes = []
+
+        for node in unified_graph["nodes"]:
+            if _is_rule_entity(node):
+                rule_nodes.append(node)
+            else:
+                non_rule_nodes.append(node)
+                logger.warning(f"Non-rule entity found in unified graph: {node.get('name', 'Unknown')} (Type: {node.get('type', 'Unknown')})")
+
+        if non_rule_nodes:
+            logger.warning(f"Found {len(non_rule_nodes)} non-rule entities in unified graph - filtering them out")
+            # Update the unified graph to only contain rule entities
+            unified_graph["nodes"] = rule_nodes
+            unified_graph["total_nodes"] = len(rule_nodes)
+
+        if not rule_nodes:
+            logger.debug("No rule entities found after filtering")
+            return ConflictDetectionResult(
+                conflicts=[],
+                summary="No rule entities found for conflict analysis after filtering"
+            )
+
+        # Prepare comprehensive context for LLM analysis with rule entities only
         analysis_context = {
-            "total_nodes": unified_graph["total_nodes"],
+            "total_rule_nodes": unified_graph["total_nodes"],
             "total_edges": unified_graph["total_edges"],
             "total_chunks": unified_graph["total_chunks"],
-            "nodes": unified_graph["nodes"],
+            "rule_nodes": unified_graph["nodes"],
             "edges": unified_graph["edges"],
             "confidence_threshold": confidence_threshold,
-            "analysis_scope": "complete_graph"
+            "analysis_scope": "rule_entities_only"
         }
 
         # Load conflict detection prompt from external file
         conflict_detection_prompt = read_query_prompt(CONFLICT_DETECTION_PROMPT_PATH)
 
-        # Enhanced prompt for complete graph analysis
+        # Enhanced prompt for rule entity conflict analysis
         enhanced_prompt = f"""
 {conflict_detection_prompt}
 
-## Complete Graph Analysis Context:
-- Total nodes: {unified_graph['total_nodes']}
-- Total edges: {unified_graph['total_edges']}
+## Rule Entity Conflict Analysis Context:
+- Total rule entities: {unified_graph['total_nodes']}
+- Total edges between rule entities: {unified_graph['total_edges']}
 - Source chunks: {unified_graph['total_chunks']}
+- Analysis scope: Rule entities only (non-rule entities have been filtered out)
+
+IMPORTANT: Only analyze conflicts between rule entities. All provided nodes are rule entities.
 
 """
 
-        # Use LLM to detect conflicts across the complete graph
+        # Use LLM to detect conflicts across rule entities only
         conflict_result = await llm_client.acreate_structured_output(
-            text_input=f"Analyze the complete graph for conflicts:\n{analysis_context}",
+            text_input=f"Analyze rule entities for conflicts:\n{analysis_context}",
             system_prompt=enhanced_prompt,
             response_model=ConflictDetectionResult
         )
@@ -186,14 +349,14 @@ async def analyze_conflicts_in_complete_graph(
 
         return ConflictDetectionResult(
             conflicts=high_confidence_conflicts,
-            summary=f"Complete graph analysis: {conflict_result.summary}"
+            summary=f"Rule entity conflict analysis: {conflict_result.summary}"
         )
 
     except Exception as error:
-        logger.error(f"Error analyzing conflicts in complete graph: {str(error)}", exc_info=True)
+        logger.error(f"Error analyzing conflicts in rule entities: {str(error)}", exc_info=True)
         return ConflictDetectionResult(
             conflicts=[],
-            summary=f"Error during complete graph conflict analysis: {str(error)}"
+            summary=f"Error during rule entity conflict analysis: {str(error)}"
         )
 
 
@@ -262,16 +425,19 @@ async def detect_and_update_conflicts(
         graph_engine = await get_graph_engine()
 
         # Extract complete unified graph data
-        unified_graph = await extract_complete_graph_data(data_chunks)
+        raw_unified_graph = await extract_complete_graph_data(data_chunks)
+
+        # Apply additional filtering to ensure only rule entities are included
+        unified_graph = filter_unified_graph_for_rules(raw_unified_graph)
 
         if unified_graph["total_nodes"] == 0:
-            logger.info("No nodes found in graph - skipping conflict detection")
+            logger.info("No rule entities found in graph - skipping conflict detection")
             return data_chunks
 
-        logger.info(f"Analyzing unified graph: {unified_graph['total_nodes']} nodes, "
-                   f"{unified_graph['total_edges']} edges")
+        logger.info(f"Analyzing unified graph with rule entities only: {unified_graph['total_nodes']} rule nodes, "
+                   f"{unified_graph['total_edges']} edges between rule entities")
 
-        # perform LLM-based complete graph conflict analysis
+        # perform LLM-based rule entity conflict analysis
         conflict_result = await analyze_conflicts_in_complete_graph(
             unified_graph, llm_client, confidence_threshold
         )
@@ -286,7 +452,7 @@ async def detect_and_update_conflicts(
                 seen_pairs.add(pair_key)
 
         all_conflicts = unique_conflicts
-        logger.info(f"Complete graph analysis detected {len(all_conflicts)} conflicts")
+        logger.info(f"Rule entity conflict analysis detected {len(all_conflicts)} conflicts")
 
         # Update graph with detected conflicts
         if all_conflicts:
@@ -297,10 +463,10 @@ async def detect_and_update_conflicts(
             logger.info(f"Graph update completed: {update_stats}")
 
         else:
-            logger.info("No conflicts detected in complete graph analysis")
+            logger.info("No conflicts detected between rule entities")
 
         return data_chunks
 
     except Exception as error:
-        logger.error(f"Error in complete graph conflict detection: {str(error)}", exc_info=True)
+        logger.error(f"Error in rule entity conflict detection: {str(error)}", exc_info=True)
         raise error
